@@ -3,7 +3,7 @@ import asyncio
 from flask import Flask, request, jsonify
 import requests
 import google.generativeai as genai
-import edge_tts
+import google.generativeai as genai
 
 app = Flask(__name__)
 
@@ -48,10 +48,7 @@ def send_audio(chat_id, audio_path):
         print(f"send_audio error: {e}")
 
 
-async def generate_audio_async(text, voice, output_path):
-    """Edge TTS se async audio generate karna"""
-    communicate = edge_tts.Communicate(text, voice)
-    await communicate.save(output_path)
+# Removed edge-tts async function
 
 
 @app.route('/', methods=['POST', 'GET'])
@@ -102,16 +99,21 @@ def webhook():
                 if not text_to_speak:
                     send_message(chat_id, "âŒ Audio ke baad text likhein!\n_Example: Audio: Hello world_")
                 else:
-                    send_message(chat_id, "ðŸŽ™ï¸ *Voiceover render ho raha hai... 15-20 seconds wait karein*")
+                    send_message(chat_id, "ðŸŽ™ï¸ *Voiceover render ho raha hai... thoda wait karein*")
                     audio_path = "/tmp/voiceover.mp3"
                     try:
-                        # Professional American male voice
-                        asyncio.run(generate_audio_async(
-                            text_to_speak,
-                            "en-US-ChristopherNeural",
-                            audio_path
-                        ))
-                        send_audio(chat_id, audio_path)
+                        import urllib.parse
+                        encoded_text = urllib.parse.quote(text_to_speak)
+                        # StreamElements API with professional male voice (Matthew)
+                        audio_url = f"https://api.streamelements.com/kappa/v2/speech?voice=Matthew&text={encoded_text}"
+                        
+                        audio_resp = requests.get(audio_url)
+                        if audio_resp.status_code == 200:
+                            with open(audio_path, 'wb') as f:
+                                f.write(audio_resp.content)
+                            send_audio(chat_id, audio_path)
+                        else:
+                            send_message(chat_id, f"âŒ Audio API error: {audio_resp.status_code}")
                     except Exception as e:
                         send_message(chat_id, f"âŒ Audio error: `{str(e)}`")
                     finally:
