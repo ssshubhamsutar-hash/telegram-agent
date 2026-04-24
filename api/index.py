@@ -4,8 +4,8 @@ import os
 
 app = Flask(__name__)
 
-# Vercel Environment Variables se BOT_TOKEN uthayega
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
+# Pehle environment variable check karo, nahi mila to hardcoded use karo
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8773103265:AAHbmBnEnzsr5UfKy8AuQistP24eAxzeDfI')
 
 
 def send_message(chat_id, text):
