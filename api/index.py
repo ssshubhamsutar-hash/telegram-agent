@@ -21,7 +21,10 @@ def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
     try:
-        requests.post(url, json=payload, timeout=10)
+        r = requests.post(url, json=payload, timeout=10)
+        if r.status_code != 200:
+            payload["parse_mode"] = ""
+            requests.post(url, json=payload, timeout=10)
     except Exception as e:
         print(f"send_message error: {e}")
 
@@ -31,7 +34,20 @@ def send_photo(chat_id, photo_url, caption=""):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     payload = {"chat_id": chat_id, "photo": photo_url, "caption": caption, "parse_mode": "Markdown"}
     try:
-        requests.post(url, json=payload, timeout=15)
+        if photo_url.startswith("http"):
+            # Download image first to avoid Telegram timeout
+            img_resp = requests.get(photo_url, timeout=30)
+            if img_resp.status_code == 200:
+                files = {'photo': img_resp.content}
+                data = {'chat_id': chat_id, 'caption': caption, 'parse_mode': 'Markdown'}
+                r = requests.post(url, files=files, data=data, timeout=30)
+                if r.status_code != 200:
+                    data['parse_mode'] = ""
+                    requests.post(url, files=files, data=data, timeout=30)
+            else:
+                send_message(chat_id, "âŒ Image generate hone mein error aaya.")
+        else:
+            r = requests.post(url, json=payload, timeout=30)
     except Exception as e:
         print(f"send_photo error: {e}")
 
