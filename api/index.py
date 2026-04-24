@@ -102,18 +102,10 @@ def webhook():
                     send_message(chat_id, "ðŸŽ™ï¸ *Voiceover render ho raha hai... thoda wait karein*")
                     audio_path = "/tmp/voiceover.mp3"
                     try:
-                        import urllib.parse
-                        encoded_text = urllib.parse.quote(text_to_speak)
-                        # StreamElements API with professional male voice (Matthew)
-                        audio_url = f"https://api.streamelements.com/kappa/v2/speech?voice=Matthew&text={encoded_text}"
-                        
-                        audio_resp = requests.get(audio_url)
-                        if audio_resp.status_code == 200:
-                            with open(audio_path, 'wb') as f:
-                                f.write(audio_resp.content)
-                            send_audio(chat_id, audio_path)
-                        else:
-                            send_message(chat_id, f"âŒ Audio API error: {audio_resp.status_code}")
+                        from gtts import gTTS
+                        tts = gTTS(text=text_to_speak, lang='en', tld='us') # US English voice
+                        tts.save(audio_path)
+                        send_audio(chat_id, audio_path)
                     except Exception as e:
                         send_message(chat_id, f"âŒ Audio error: `{str(e)}`")
                     finally:
