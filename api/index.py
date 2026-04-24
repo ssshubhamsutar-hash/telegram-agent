@@ -1,8 +1,6 @@
 import os
-import asyncio
 from flask import Flask, request, jsonify
 import requests
-import google.generativeai as genai
 import google.generativeai as genai
 
 app = Flask(__name__)
