@@ -7,6 +7,7 @@ import edge_tts
 from moviepy.editor import ImageClip, AudioFileClip
 import urllib.request
 import time
+import threading
 
 app = Flask(__name__)
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '8773103265:AAHbmBnEnzsr5UfKy8AuQistP24eAxzeDfI')
@@ -118,8 +119,11 @@ def webhook():
                     "voice": "en-US-ChristopherNeural" # Default Male
                 }
                 
-                process_video_request(chat_id, topic, script, user_sessions[chat_id]["voice"], topic)
-                send_message(chat_id, "💡 *Tip:* Pasand nahi aaya? Aap changes karwa sakte hain! Likh kar bhejein: `Edit: Make the voice female` ya `Edit: Change image to a dark city`.")
+                def bg_makevideo():
+                    process_video_request(chat_id, topic, script, user_sessions[chat_id]["voice"], topic)
+                    send_message(chat_id, "💡 *Tip:* Pasand nahi aaya? Aap changes karwa sakte hain! Likh kar bhejein: `Edit: Make the voice female` ya `Edit: Change image to a dark city`.")
+                
+                threading.Thread(target=bg_makevideo).start()
 
             # 🟡 COMMAND 2: Video ko Edit Karna (Memory Based Iteration)
             elif user_text.lower().startswith("edit:"):
@@ -160,7 +164,11 @@ def webhook():
 
                 # Update memory aur naya video banana
                 user_sessions[chat_id] = session
-                process_video_request(chat_id, session["topic"], session["script"], session["voice"], session["image_prompt"])
+                
+                def bg_editvideo():
+                    process_video_request(chat_id, session["topic"], session["script"], session["voice"], session["image_prompt"])
+                
+                threading.Thread(target=bg_editvideo).start()
 
             else:
                 send_message(chat_id, "🤖 Full MP4 Video banane ke liye type karein: `MakeVideo: [Aapka Topic]`")
