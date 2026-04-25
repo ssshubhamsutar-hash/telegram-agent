@@ -15,7 +15,7 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyCVfexY2dUB' + 'wgg_sGyS
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# ðŸ§  MEMORY: Ye bot ko yaad rakhne me madad karega (Phase 5)
+# 🧠 MEMORY: Ye bot ko yaad rakhne me madad karega (Phase 5)
 user_sessions = {}
 
 def send_message(chat_id, text):
@@ -38,7 +38,7 @@ def send_video(chat_id, video_path):
             requests.post(url, files=files, data=data, timeout=60)
     except Exception as e:
         print(f"send_video error: {e}")
-        send_message(chat_id, "âŒ Video upload fail ho gaya. File size bahut bada ho sakta hai.")
+        send_message(chat_id, "❌ Video upload fail ho gaya. File size bahut bada ho sakta hai.")
 
 async def generate_audio(text, voice, output_path):
     communicate = edge_tts.Communicate(text, voice)
@@ -71,11 +71,11 @@ def process_video_request(chat_id, topic, script, voice, image_prompt):
         asyncio.run(generate_audio(script, voice, aud_path))
         
         # 3. Video Merge (FFmpeg/MoviePy)
-        send_message(chat_id, "âš™ï¸ *Video render ho rahi hai (Audio aur Image merge ho rahe hain)...* â³")
+        send_message(chat_id, "⚙️ *Video render ho rahi hai (Audio aur Image merge ho rahe hain)...* ⏳")
         make_video(img_path, aud_path, vid_path)
         
         # 4. Upload to Telegram
-        send_message(chat_id, "ðŸš€ *Render successful! Video upload ho rahi hai...*")
+        send_message(chat_id, "🚀 *Render successful! Video upload ho rahi hai...*")
         send_video(chat_id, vid_path)
         
         # Cleanup storage
@@ -84,7 +84,7 @@ def process_video_request(chat_id, topic, script, voice, image_prompt):
                 os.remove(path)
                 
     except Exception as e:
-        send_message(chat_id, f"âŒ Video Generation Error: {str(e)}")
+        send_message(chat_id, f"❌ Video Generation Error: {str(e)}")
 
 @app.route('/', methods=['POST', 'GET'])
 def webhook():
@@ -96,13 +96,13 @@ def webhook():
             user_text = update["message"]["text"]
             
             if user_text == "/start":
-                send_message(chat_id, "ðŸ¤– *Welcome to The Boss Level (Phase 4 & 5)!*\n\nNaya Video Banane ke liye type karein:\n`MakeVideo: [Topic]`\n\nVideo me Changes Karne ke liye type karein:\n`Edit: [Changes]`")
+                send_message(chat_id, "🤖 *Welcome to The Boss Level (Phase 4 & 5)!*\n\nNaya Video Banane ke liye type karein:\n`MakeVideo: [Topic]`\n\nVideo me Changes Karne ke liye type karein:\n`Edit: [Changes]`")
                 return jsonify({"status": "ok"}), 200
 
-            # ðŸŸ¢ COMMAND 1: Naya Video Banana
+            # 🟢 COMMAND 1: Naya Video Banana
             if user_text.lower().startswith("makevideo:"):
                 topic = user_text[10:].strip()
-                send_message(chat_id, f"ðŸŽ¬ *'{topic}' par kaam shuru...* (Render Server Active)")
+                send_message(chat_id, f"🎬 *'{topic}' par kaam shuru...* (Render Server Active)")
                 
                 script_prompt = f"Write exactly ONE engaging sentence for a YouTube short about: {topic}"
                 try:
@@ -119,17 +119,17 @@ def webhook():
                 }
                 
                 process_video_request(chat_id, topic, script, user_sessions[chat_id]["voice"], topic)
-                send_message(chat_id, "ðŸ’¡ *Tip:* Pasand nahi aaya? Aap changes karwa sakte hain! Likh kar bhejein: `Edit: Make the voice female` ya `Edit: Change image to a dark city`.")
+                send_message(chat_id, "💡 *Tip:* Pasand nahi aaya? Aap changes karwa sakte hain! Likh kar bhejein: `Edit: Make the voice female` ya `Edit: Change image to a dark city`.")
 
-            # ðŸŸ¡ COMMAND 2: Video ko Edit Karna (Memory Based Iteration)
+            # 🟡 COMMAND 2: Video ko Edit Karna (Memory Based Iteration)
             elif user_text.lower().startswith("edit:"):
                 if chat_id not in user_sessions:
-                    send_message(chat_id, "âŒ Pehle naya video banayein: `MakeVideo: [Topic]`")
+                    send_message(chat_id, "❌ Pehle naya video banayein: `MakeVideo: [Topic]`")
                     return jsonify({"status": "ok"}), 200
                 
                 edit_instruction = user_text[5:].strip()
                 session = user_sessions[chat_id]
-                send_message(chat_id, "ðŸ“ *Aapke changes process ho rahe hain...*")
+                send_message(chat_id, "📝 *Aapke changes process ho rahe hain...*")
                 
                 # Update voice based on keywords
                 if "female" in edit_instruction.lower() or "girl" in edit_instruction.lower() or "woman" in edit_instruction.lower():
@@ -156,14 +156,14 @@ def webhook():
                         elif line.startswith("IMAGE_PROMPT:"):
                             session['image_prompt'] = line.replace("IMAGE_PROMPT:", "").strip()
                 except Exception as e:
-                    send_message(chat_id, "âš ï¸ AI instruction theek se nahi samajh paya, par main manual try kar raha hu.")
+                    send_message(chat_id, "⚠️ AI instruction theek se nahi samajh paya, par main manual try kar raha hu.")
 
                 # Update memory aur naya video banana
                 user_sessions[chat_id] = session
                 process_video_request(chat_id, session["topic"], session["script"], session["voice"], session["image_prompt"])
 
             else:
-                send_message(chat_id, "ðŸ¤– Full MP4 Video banane ke liye type karein: `MakeVideo: [Aapka Topic]`")
+                send_message(chat_id, "🤖 Full MP4 Video banane ke liye type karein: `MakeVideo: [Aapka Topic]`")
             
         return jsonify({"status": "ok"}), 200
     
