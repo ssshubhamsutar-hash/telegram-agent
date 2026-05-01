@@ -18,7 +18,7 @@ try:
     BOT_TOKEN = os.environ.get('BOT_TOKEN', '8773103265:AAHbmBnEnzsr5UfKy8AuQistP24eAxzeDfI')
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyCVfexY2dUBwgg_sGyS2R1389mlkcShfSo')
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel('gemini-1.5-flash')
 
     user_sessions = {}
 
