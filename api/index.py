@@ -15,7 +15,7 @@ try:
     import time
     import threading
 
-    BOT_TOKEN = os.environ.get('BOT_TOKEN', '8773103265:AAHbmBnEnzsr5UfKy8AuQistP24eAxzeDfI')
+    BOT_TOKEN = '8773103265:AAHbmBnEnzsr5UfKy8AuQistP24eAxzeDfI'
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyCVfexY2dUBwgg_sGyS2R1389mlkcShfSo')
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel('gemini-1.5-flash')
@@ -93,6 +93,7 @@ def webhook():
         if "message" in update and "text" in update["message"]:
             chat_id = update["message"]["chat"]["id"]
             user_text = update["message"]["text"]
+            print(f"Received message: '{user_text}' from chat_id: {chat_id}")
             
             if user_text == "/start":
                 send_message(chat_id, "🤖 *Welcome to The Boss Level (Phase 4 & 5)!*\n\nNaya Video Banane ke liye type karein:\n`MakeVideo: [Topic]`\n\nVideo me Changes Karne ke liye type karein:\n`Edit: [Changes]`")
