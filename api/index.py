@@ -56,11 +56,12 @@ try:
         
         audio_clip = AudioFileClip(audio_path)
         duration = audio_clip.duration
+        audio_clip.close()
         
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
         
         # Proper zoom pan effect with looped input
-        vf_string = "zoompan=z='zoom+0.0015':d=1:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=1080x1920"
+        vf_string = "zoompan=z='zoom+0.0015':d=1:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=720x1280"
         
         cmd = [
             ffmpeg_exe,
@@ -70,6 +71,7 @@ try:
             '-i', audio_path,
             '-vf', vf_string,
             '-c:v', 'libx264',
+            '-preset', 'ultrafast',
             '-tune', 'stillimage',
             '-c:a', 'aac',
             '-b:a', '128k',
@@ -88,7 +90,7 @@ try:
             vid_path = f"/tmp/vid_{chat_id}_{ts}.mp4"
             os.makedirs("/tmp", exist_ok=True)
             
-            image_url = f"https://image.pollinations.ai/prompt/{image_prompt.replace(' ', '%20')}?width=1080&height=1920&nologo=true"
+            image_url = f"https://image.pollinations.ai/prompt/{image_prompt.replace(' ', '%20')}?width=720&height=1280&nologo=true"
             
             img_response = requests.get(image_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
             if img_response.status_code == 200:
