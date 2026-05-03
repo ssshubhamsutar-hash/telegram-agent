@@ -59,11 +59,10 @@ try:
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
         
         # Zoom pan effect: zoom in slowly towards the center
-        vf_string = f"zoompan=z='min(zoom+0.001,1.15)':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=1080x1920,format=yuv420p"
+        vf_string = f"zoompan=z='zoom+0.0015':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=1080x1920:fps=24,format=yuv420p"
         
         cmd = [
             ffmpeg_exe,
-            '-loop', '1',
             '-i', image_path,
             '-i', audio_path,
             '-vf', vf_string,
@@ -72,7 +71,7 @@ try:
             '-c:a', 'aac',
             '-b:a', '128k',
             '-pix_fmt', 'yuv420p',
-            '-t', str(duration),
+            '-shortest',
             '-y', output_path
         ]
         
