@@ -49,10 +49,34 @@ try:
         tts.save(output_path)
 
     def make_video(image_path, audio_path, output_path):
+        import subprocess
+        import imageio_ffmpeg
+        
         audio_clip = AudioFileClip(audio_path)
-        image_clip = ImageClip(image_path).set_duration(audio_clip.duration)
-        video_clip = image_clip.set_audio(audio_clip)
-        video_clip.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac")
+        duration = audio_clip.duration
+        frames = int(duration * 24)
+        
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        
+        # Zoom pan effect: zoom in slowly towards the center
+        vf_string = f"zoompan=z='min(zoom+0.001,1.15)':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=1080x1920,format=yuv420p"
+        
+        cmd = [
+            ffmpeg_exe,
+            '-loop', '1',
+            '-i', image_path,
+            '-i', audio_path,
+            '-vf', vf_string,
+            '-c:v', 'libx264',
+            '-tune', 'stillimage',
+            '-c:a', 'aac',
+            '-b:a', '128k',
+            '-pix_fmt', 'yuv420p',
+            '-t', str(duration),
+            '-y', output_path
+        ]
+        
+        subprocess.run(cmd, check=True)
 
     def process_video_request(chat_id, topic, script, voice, image_prompt):
         try:
