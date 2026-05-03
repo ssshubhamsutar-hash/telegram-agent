@@ -9,7 +9,7 @@ try:
     import asyncio
     import requests
     import google.generativeai as genai
-    import edge_tts
+    from gtts import gTTS
     from moviepy.editor import ImageClip, AudioFileClip
     import urllib.request
     import time
@@ -44,9 +44,9 @@ try:
             print(f"send_video error: {e}")
             send_message(chat_id, "❌ Video upload fail ho gaya. File size bahut bada ho sakta hai.")
 
-    async def generate_audio(text, voice, output_path):
-        communicate = edge_tts.Communicate(text, voice)
-        await communicate.save(output_path)
+    def generate_audio(text, voice, output_path):
+        tts = gTTS(text=text, lang='en')
+        tts.save(output_path)
 
     def make_video(image_path, audio_path, output_path):
         audio_clip = AudioFileClip(audio_path)
@@ -71,7 +71,7 @@ try:
             else:
                 raise Exception(f"HTTP Error {img_response.status_code}: {img_response.reason} from Pollinations AI")
             
-            asyncio.run(generate_audio(script, voice, aud_path))
+            generate_audio(script, voice, aud_path)
             
             send_message(chat_id, "⚙️ *Video render ho rahi hai (Audio aur Image merge ho rahe hain)...* ⏳")
             make_video(img_path, aud_path, vid_path)
