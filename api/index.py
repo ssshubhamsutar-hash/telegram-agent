@@ -56,17 +56,16 @@ try:
         
         audio_clip = AudioFileClip(audio_path)
         duration = audio_clip.duration
+        frames = int(duration * 24)
         audio_clip.close()
         
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
         
-        # Proper zoom pan effect with looped input
-        vf_string = "zoompan=z='zoom+0.0015':d=1:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=720x1280"
+        # Proper zoom pan effect with single input image
+        vf_string = f"zoompan=z='zoom+0.0015':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=720x1280:fps=24"
         
         cmd = [
             ffmpeg_exe,
-            '-loop', '1',
-            '-framerate', '24',
             '-i', image_path,
             '-i', audio_path,
             '-vf', vf_string,
@@ -76,7 +75,6 @@ try:
             '-c:a', 'aac',
             '-b:a', '128k',
             '-pix_fmt', 'yuv420p',
-            '-t', str(duration),
             '-y', output_path
         ]
         
