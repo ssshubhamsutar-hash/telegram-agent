@@ -63,7 +63,13 @@ try:
             os.makedirs("/tmp", exist_ok=True)
             
             image_url = f"https://image.pollinations.ai/prompt/{image_prompt.replace(' ', '%20')}?width=1080&height=1920&nologo=true"
-            urllib.request.urlretrieve(image_url, img_path)
+            
+            img_response = requests.get(image_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
+            if img_response.status_code == 200:
+                with open(img_path, 'wb') as f:
+                    f.write(img_response.content)
+            else:
+                raise Exception(f"HTTP Error {img_response.status_code}: {img_response.reason} from Pollinations AI")
             
             asyncio.run(generate_audio(script, voice, aud_path))
             
