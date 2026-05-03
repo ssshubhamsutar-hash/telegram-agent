@@ -39,10 +39,12 @@ try:
             with open(video_path, 'rb') as video:
                 files = {'video': video}
                 data = {'chat_id': chat_id}
-                requests.post(url, files=files, data=data, timeout=60)
+                r = requests.post(url, files=files, data=data, timeout=60)
+                if r.status_code != 200:
+                    send_message(chat_id, f"❌ Video upload rejected by Telegram: {r.text}")
         except Exception as e:
             print(f"send_video error: {e}")
-            send_message(chat_id, "❌ Video upload fail ho gaya. File size bahut bada ho sakta hai.")
+            send_message(chat_id, "❌ Video upload fail ho gaya.")
 
     def generate_audio(text, voice, output_path):
         tts = gTTS(text=text, lang='en')
@@ -54,15 +56,16 @@ try:
         
         audio_clip = AudioFileClip(audio_path)
         duration = audio_clip.duration
-        frames = int(duration * 24)
         
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
         
-        # Zoom pan effect: zoom in slowly towards the center
-        vf_string = f"zoompan=z='zoom+0.0015':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=1080x1920:fps=24,format=yuv420p"
+        # Proper zoom pan effect with looped input
+        vf_string = "zoompan=z='zoom+0.0015':d=1:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=1080x1920"
         
         cmd = [
             ffmpeg_exe,
+            '-loop', '1',
+            '-framerate', '24',
             '-i', image_path,
             '-i', audio_path,
             '-vf', vf_string,
@@ -71,7 +74,7 @@ try:
             '-c:a', 'aac',
             '-b:a', '128k',
             '-pix_fmt', 'yuv420p',
-            '-shortest',
+            '-t', str(duration),
             '-y', output_path
         ]
         
