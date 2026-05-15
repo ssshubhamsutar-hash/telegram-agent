@@ -55,7 +55,7 @@ try:
         communicate = edge_tts.Communicate(text, voice)
         asyncio.run(communicate.save(output_path))
 
-    def make_video(image_path, audio_path, output_path):
+    def make_video(image_paths, audio_path, output_path):
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
         
         # Get duration using ffmpeg instead of moviepy to avoid grpc/epoll log parsing errors
@@ -66,53 +66,79 @@ try:
             h, m, s = match.groups()
             duration = int(h) * 3600 + int(m) * 60 + float(s)
             
-        frames = int(duration * 24)
+        if duration <= 0:
+            duration = 5.0
+
+        n = len(image_paths)
+        dur_per_img = duration / n
+        frames = int(dur_per_img * 24)
         
-        # Proper zoom pan effect with single input image
-        vf_string = f"zoompan=z='zoom+0.0015':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=720x1280:fps=24"
+        cmd = [ffmpeg_exe]
+        for p in image_paths:
+            cmd.extend(['-i', p])
+        cmd.extend(['-i', audio_path])
         
-        cmd = [
-            ffmpeg_exe,
-            '-i', image_path,
-            '-i', audio_path,
-            '-vf', vf_string,
+        filters = []
+        concat_inputs = ""
+        for i in range(n):
+            filters.append(f"[{i}:v]zoompan=z='zoom+0.0015':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=720x1280:fps=24[v{i}]")
+            concat_inputs += f"[v{i}]"
+            
+        filters.append(f"{concat_inputs}concat=n={n}:v=1:a=0[outv]")
+        filter_complex = ";".join(filters)
+        
+        cmd.extend([
+            '-filter_complex', filter_complex,
+            '-map', '[outv]',
+            '-map', f'{n}:a',
             '-c:v', 'libx264',
             '-preset', 'ultrafast',
             '-tune', 'stillimage',
             '-c:a', 'aac',
             '-b:a', '128k',
             '-pix_fmt', 'yuv420p',
-            '-y', output_path
-        ]
+            '-y',
+            '-shortest',
+            output_path
+        ])
         
         subprocess.run(cmd, check=True)
 
     def process_video_request(chat_id, topic, script, voice, image_prompt):
         try:
             ts = str(int(time.time()))
-            img_path = f"/tmp/img_{chat_id}_{ts}.jpg"
+            image_paths = []
             aud_path = f"/tmp/aud_{chat_id}_{ts}.mp3"
             vid_path = f"/tmp/vid_{chat_id}_{ts}.mp4"
             os.makedirs("/tmp", exist_ok=True)
             
-            image_url = f"https://image.pollinations.ai/prompt/{image_prompt.replace(' ', '%20')}?width=720&height=1280&nologo=true"
+            prompts = [
+                f"{image_prompt} wide cinematic shot",
+                f"{image_prompt} close up detailed",
+                f"{image_prompt} epic lighting"
+            ]
             
-            img_response = requests.get(image_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
-            if img_response.status_code == 200:
-                with open(img_path, 'wb') as f:
-                    f.write(img_response.content)
-            else:
-                raise Exception(f"HTTP Error {img_response.status_code}: {img_response.reason} from Pollinations AI")
+            for i, p in enumerate(prompts):
+                img_path = f"/tmp/img_{chat_id}_{ts}_{i}.jpg"
+                url = f"https://image.pollinations.ai/prompt/{p.replace(' ', '%20')}?width=720&height=1280&nologo=true&seed={int(time.time())+i}"
+                img_response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
+                if img_response.status_code == 200:
+                    with open(img_path, 'wb') as f:
+                        f.write(img_response.content)
+                    image_paths.append(img_path)
+            
+            if not image_paths:
+                raise Exception("Images download fail ho gaya Pollinations se.")
             
             generate_audio(script, voice, aud_path)
             
-            send_message(chat_id, "⚙️ *Video render ho rahi hai (Audio aur Image merge ho rahe hain)...* ⏳")
-            make_video(img_path, aud_path, vid_path)
+            send_message(chat_id, f"⚙️ *Video render ho rahi hai ({len(image_paths)} images merge ho rahi hain)...* ⏳")
+            make_video(image_paths, aud_path, vid_path)
             
             send_message(chat_id, "🚀 *Render successful! Video upload ho rahi hai...*")
             send_video(chat_id, vid_path)
             
-            for path in [img_path, aud_path, vid_path]:
+            for path in image_paths + [aud_path, vid_path]:
                 if os.path.exists(path):
                     os.remove(path)
         except Exception as e:
