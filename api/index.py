@@ -121,11 +121,14 @@ try:
             for i, p in enumerate(prompts):
                 img_path = f"/tmp/img_{chat_id}_{ts}_{i}.jpg"
                 url = f"https://image.pollinations.ai/prompt/{p.replace(' ', '%20')}?width=720&height=1280&nologo=true&seed={int(time.time())+i}"
-                img_response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
-                if img_response.status_code == 200:
-                    with open(img_path, 'wb') as f:
-                        f.write(img_response.content)
-                    image_paths.append(img_path)
+                try:
+                    img_response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+                    if img_response.status_code == 200:
+                        with open(img_path, 'wb') as f:
+                            f.write(img_response.content)
+                        image_paths.append(img_path)
+                except Exception as e:
+                    print(f"Image {i} fetch failed: {e}")
             
             if not image_paths:
                 raise Exception("Images download fail ho gaya Pollinations se.")
