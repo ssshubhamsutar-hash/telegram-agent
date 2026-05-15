@@ -117,18 +117,22 @@ try:
                 f"{image_prompt} close up detailed",
                 f"{image_prompt} epic lighting"
             ]
+            models = ["flux", "turbo", "flux-realism"]
             
             for i, p in enumerate(prompts):
                 img_path = f"/tmp/img_{chat_id}_{ts}_{i}.jpg"
-                url = f"https://image.pollinations.ai/prompt/{p.replace(' ', '%20')}?width=720&height=1280&nologo=true&seed={int(time.time())+i}"
-                try:
-                    img_response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-                    if img_response.status_code == 200:
-                        with open(img_path, 'wb') as f:
-                            f.write(img_response.content)
-                        image_paths.append(img_path)
-                except Exception as e:
-                    print(f"Image {i} fetch failed: {e}")
+                url = f"https://image.pollinations.ai/prompt/{p.replace(' ', '%20')}?width=720&height=1280&nologo=true&seed={int(time.time())+i}&model={models[i]}"
+                for attempt in range(2):
+                    try:
+                        img_response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=50)
+                        if img_response.status_code == 200 and len(img_response.content) > 1000:
+                            with open(img_path, 'wb') as f:
+                                f.write(img_response.content)
+                            image_paths.append(img_path)
+                            break
+                    except Exception as e:
+                        time.sleep(2)
+                        print(f"Image {i} attempt {attempt} failed: {e}")
             
             if not image_paths:
                 raise Exception("Images download fail ho gaya Pollinations se.")
