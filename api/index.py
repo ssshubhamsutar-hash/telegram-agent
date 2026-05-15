@@ -1,4 +1,7 @@
 import os
+os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "1"
+os.environ["GRPC_POLL_STRATEGY"] = "epoll1"
+
 import traceback
 from flask import Flask, request, jsonify
 
@@ -9,11 +12,13 @@ try:
     import asyncio
     import requests
     import google.generativeai as genai
-    from gtts import gTTS
-    from moviepy.editor import ImageClip, AudioFileClip
+    import edge_tts
     import urllib.request
     import time
     import threading
+    import subprocess
+    import re
+    import imageio_ffmpeg
 
     BOT_TOKEN = '8773103265:AAHbmBnEnzsr5UfKy8AuQistP24eAxzeDfI'
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyCVfexY2dUBwgg_sGyS2R1389mlkcShfSo')
@@ -47,19 +52,21 @@ try:
             send_message(chat_id, "❌ Video upload fail ho gaya.")
 
     def generate_audio(text, voice, output_path):
-        tts = gTTS(text=text, lang='en')
-        tts.save(output_path)
+        communicate = edge_tts.Communicate(text, voice)
+        asyncio.run(communicate.save(output_path))
 
     def make_video(image_path, audio_path, output_path):
-        import subprocess
-        import imageio_ffmpeg
-        
-        audio_clip = AudioFileClip(audio_path)
-        duration = audio_clip.duration
-        frames = int(duration * 24)
-        audio_clip.close()
-        
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        
+        # Get duration using ffmpeg instead of moviepy to avoid grpc/epoll log parsing errors
+        result = subprocess.run([ffmpeg_exe, '-i', audio_path], stderr=subprocess.PIPE, text=True)
+        duration = 5.0 # default fallback
+        match = re.search(r"Duration: (\d{2}):(\d{2}):(\d{2}\.\d+)", result.stderr)
+        if match:
+            h, m, s = match.groups()
+            duration = int(h) * 3600 + int(m) * 60 + float(s)
+            
+        frames = int(duration * 24)
         
         # Proper zoom pan effect with single input image
         vf_string = f"zoompan=z='zoom+0.0015':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=720x1280:fps=24"
