@@ -119,29 +119,51 @@ try:
             ]
             models = ["flux", "turbo", "flux-realism"]
             import urllib.parse
-            for i, p in enumerate(prompts):
-                img_path = f"/tmp/img_{chat_id}_{ts}_{i}.jpg"
-                encoded_p = urllib.parse.quote(p)
+            
+            def fetch_image_robust(p_text, i_path, idx):
+                enc_p = urllib.parse.quote(p_text)
+                poll_url = f"https://image.pollinations.ai/prompt/{enc_p}?width=720&height=1280&nologo=true&seed={int(time.time())+idx}"
+                enc_poll = urllib.parse.quote(poll_url)
                 
                 urls = [
-                    f"https://image.pollinations.ai/prompt/{encoded_p}?width=720&height=1280&nologo=true&seed={int(time.time())+i}&model={models[i]}",
-                    f"https://image.pollinations.ai/prompt/{encoded_p}?width=720&height=1280&nologo=true&seed={int(time.time())+i+10}&model=turbo",
-                    f"https://sm.ignis.site/api/generate?prompt={encoded_p}",
-                    f"https://image.pollinations.ai/prompt/{encoded_p}?width=720&height=1280&nologo=true"
+                    poll_url,
+                    f"https://wsrv.nl/?url={enc_poll}",
+                    f"https://api.airforce/v1/imagine2?prompt={enc_p}",
+                    f"https://sm.ignis.site/api/generate?prompt={enc_p}"
                 ]
                 
-                for url in urls:
+                for u in urls:
                     try:
-                        img_response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
-                        if img_response.status_code == 200 and len(img_response.content) > 1000:
-                            with open(img_path, 'wb') as f:
-                                f.write(img_response.content)
-                            image_paths.append(img_path)
-                            time.sleep(4)  # Sleep to avoid rate limit for next image
-                            break
-                    except Exception as e:
-                        time.sleep(2)
-                        print(f"Fallback URL attempt failed: {e}")
+                        r = requests.get(u, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, timeout=25)
+                        if r.status_code == 200 and len(r.content) > 1000:
+                            if b"html" not in r.content[:200].lower():
+                                with open(i_path, 'wb') as f:
+                                    f.write(r.content)
+                                return True
+                    except:
+                        pass
+                
+                try:
+                    r = requests.get(f"https://hercai.onrender.com/v3/text2image?prompt={enc_p}", timeout=25)
+                    if r.status_code == 200:
+                        img_url = r.json().get("url")
+                        if img_url:
+                            img_r = requests.get(img_url, timeout=25)
+                            if img_r.status_code == 200 and len(img_r.content) > 1000:
+                                with open(i_path, 'wb') as f:
+                                    f.write(img_r.content)
+                                return True
+                except:
+                    pass
+                return False
+
+            for i, p in enumerate(prompts):
+                img_path = f"/tmp/img_{chat_id}_{ts}_{i}.jpg"
+                if fetch_image_robust(p, img_path, i):
+                    image_paths.append(img_path)
+                    time.sleep(2)
+                else:
+                    print(f"Failed to fetch image {i}")
             
             # Fallback to copy image if we couldn't get 3
             if len(image_paths) > 0 and len(image_paths) < 3:
