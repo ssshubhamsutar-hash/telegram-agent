@@ -170,8 +170,9 @@ try:
                 last_img = image_paths[-1]
                 import shutil
                 while len(image_paths) < 3:
-                    new_img_path = f"/tmp/img_{chat_id}_{ts}_{len(image_paths)}.jpg"
-                    shutil.copy(last_img, new_img_path)
+                    new_img_path = f"/tmp/img_{chat_id}_{ts}_dup_{len(image_paths)}.jpg"
+                    if last_img != new_img_path:
+                        shutil.copy(last_img, new_img_path)
                     image_paths.append(new_img_path)
             
             if not image_paths:
