@@ -44,7 +44,7 @@ try:
             with open(video_path, 'rb') as video:
                 files = {'video': video}
                 data = {'chat_id': chat_id}
-                r = requests.post(url, files=files, data=data, timeout=60)
+                r = requests.post(url, files=files, data=data, timeout=120)
                 if r.status_code != 200:
                     send_message(chat_id, f"❌ Video upload rejected by Telegram: {r.text}")
         except Exception as e:
@@ -126,6 +126,7 @@ try:
                 urls = [
                     f"https://image.pollinations.ai/prompt/{encoded_p}?width=720&height=1280&nologo=true&seed={int(time.time())+i}&model={models[i]}",
                     f"https://image.pollinations.ai/prompt/{encoded_p}?width=720&height=1280&nologo=true&seed={int(time.time())+i+10}&model=turbo",
+                    f"https://sm.ignis.site/api/generate?prompt={encoded_p}",
                     f"https://image.pollinations.ai/prompt/{encoded_p}?width=720&height=1280&nologo=true"
                 ]
                 
@@ -136,10 +137,20 @@ try:
                             with open(img_path, 'wb') as f:
                                 f.write(img_response.content)
                             image_paths.append(img_path)
+                            time.sleep(4)  # Sleep to avoid rate limit for next image
                             break
                     except Exception as e:
                         time.sleep(2)
                         print(f"Fallback URL attempt failed: {e}")
+            
+            # Fallback to copy image if we couldn't get 3
+            if len(image_paths) > 0 and len(image_paths) < 3:
+                last_img = image_paths[-1]
+                import shutil
+                while len(image_paths) < 3:
+                    new_img_path = f"/tmp/img_{chat_id}_{ts}_{len(image_paths)}.jpg"
+                    shutil.copy(last_img, new_img_path)
+                    image_paths.append(new_img_path)
             
             if not image_paths:
                 raise Exception("Images download fail ho gaya Pollinations se.")
