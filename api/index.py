@@ -81,7 +81,10 @@ try:
         filters = []
         concat_inputs = ""
         for i in range(n):
-            filters.append(f"[{i}:v]zoompan=z='zoom+0.0015':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=720x1280:fps=24[v{i}]")
+            if image_paths[i].endswith('.mp4'):
+                filters.append(f"[{i}:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=24[v{i}]")
+            else:
+                filters.append(f"[{i}:v]zoompan=z='zoom+0.0015':d={frames}:x='iw/2-(iw/zoom)/2':y='ih/2-(ih/zoom)/2':s=720x1280:fps=24[v{i}]")
             concat_inputs += f"[v{i}]"
             
         filters.append(f"{concat_inputs}concat=n={n}:v=1:a=0[outv]")
@@ -112,6 +115,14 @@ try:
             vid_path = f"/tmp/vid_{chat_id}_{ts}.mp4"
             os.makedirs("/tmp", exist_ok=True)
             
+            PEXELS_API_KEY = "Dn3G4Ai6hChO1lqYyy6f9H5znnQDryVbzrLl9IyDDVYCBNIUEPOslAbb"
+            
+            pexels_prompt = f"Write a 1-2 word search query for a free stock video site describing: {topic}. Use generic real-world terms if the topic is fictional (e.g. 'space' for spaceship, 'city night' for cyberpunk). Output ONLY the keywords."
+            try:
+                pexels_query = model.generate_content(pexels_prompt).text.strip().replace('"', '')
+            except:
+                pexels_query = topic
+                
             prompts = [
                 f"{image_prompt} wide cinematic shot",
                 f"{image_prompt} close up detailed",
@@ -156,21 +167,50 @@ try:
                 except:
                     pass
                 return False
+                
+            def fetch_pexels_videos(query, chat_id, ts):
+                headers = {"Authorization": PEXELS_API_KEY}
+                url = f"https://api.pexels.com/videos/search?query={urllib.parse.quote(query)}&per_page=3&orientation=portrait"
+                video_paths = []
+                try:
+                    r = requests.get(url, headers=headers, timeout=20)
+                    if r.status_code == 200:
+                        videos = r.json().get('videos', [])
+                        for i, v in enumerate(videos):
+                            files = v.get('video_files', [])
+                            if not files: continue
+                            hd_files = [f for f in files if f.get('quality') == 'hd']
+                            best = hd_files[0] if hd_files else files[0]
+                            link = best.get('link')
+                            if link:
+                                v_r = requests.get(link, timeout=60)
+                                if v_r.status_code == 200:
+                                    v_path = f"/tmp/vid_clip_{chat_id}_{ts}_{i}.mp4"
+                                    with open(v_path, 'wb') as f:
+                                        f.write(v_r.content)
+                                    video_paths.append(v_path)
+                except Exception as e:
+                    print(f"Pexels error: {e}")
+                return video_paths
 
-            for i, p in enumerate(prompts):
-                img_path = f"/tmp/img_{chat_id}_{ts}_{i}.jpg"
-                if fetch_image_robust(p, img_path, i):
-                    image_paths.append(img_path)
-                    time.sleep(2)
-                else:
-                    print(f"Failed to fetch image {i}")
+            image_paths = fetch_pexels_videos(pexels_query, chat_id, ts)
+
+            if not image_paths:
+                for i, p in enumerate(prompts):
+                    img_path = f"/tmp/img_{chat_id}_{ts}_{i}.jpg"
+                    if fetch_image_robust(p, img_path, i):
+                        image_paths.append(img_path)
+                        time.sleep(2)
+                    else:
+                        print(f"Failed to fetch image {i}")
             
-            # Fallback to copy image if we couldn't get 3
+            # Fallback to copy media if we couldn't get 3
             if len(image_paths) > 0 and len(image_paths) < 3:
                 last_img = image_paths[-1]
+                ext = ".mp4" if last_img.endswith(".mp4") else ".jpg"
                 import shutil
                 while len(image_paths) < 3:
-                    new_img_path = f"/tmp/img_{chat_id}_{ts}_dup_{len(image_paths)}.jpg"
+                    new_img_path = f"/tmp/img_{chat_id}_{ts}_dup_{len(image_paths)}{ext}"
                     if last_img != new_img_path:
                         shutil.copy(last_img, new_img_path)
                     image_paths.append(new_img_path)
